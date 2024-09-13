@@ -1,0 +1,29 @@
+install.packages("readxl")
+install.packages("dplyr")
+install.packages("tidyverse")
+
+# Muat paket
+library(readxl)
+library(dplyr)
+
+getwd()
+
+setwd("D:/kuliah/SEM 5/PenData")
+data <- read_excel("Fresh_Mart.xlsx", sheet = 1)
+
+# Menampilkan 6 baris pertama (default)
+head(data)
+
+# Menampilkan 10 baris pertama
+head(data, 10)
+
+# Membuka data dalam tampilan spreadsheet (hanya di RStudio)
+View(data)
+
+str(data)
+
+summary(data)
+
+data <- data %>%
+  mutate(`Submission Date` = as.Date(`Submission Date`, format="%b %d, %Y"),
+         `Tanggal Pengiriman` = as.Date(`Tanggal Pengiriman`, format="%b %d, %Y"))
