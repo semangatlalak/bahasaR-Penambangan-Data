@@ -7,23 +7,64 @@ library(readxl)
 library(dplyr)
 
 getwd()
-
 setwd("D:/kuliah/SEM 5/PenData")
 data <- read_excel("Fresh_Mart.xlsx", sheet = 1)
 
 # Menampilkan 6 baris pertama (default)
 head(data)
-
 # Menampilkan 10 baris pertama
 head(data, 10)
-
 # Membuka data dalam tampilan spreadsheet (hanya di RStudio)
 View(data)
-
 str(data)
-
 summary(data)
 
-data <- data %>%
-  mutate(`Submission Date` = as.Date(`Submission Date`, format="%b %d, %Y"),
-         `Tanggal Pengiriman` = as.Date(`Tanggal Pengiriman`, format="%b %d, %Y"))
+#CODE LANJUTAN 2
+library(lubridate)
+
+#PREPROCESSING SUBMISSION DATE DAN TGL PENGIRIMAN
+# Konversi kolom 'Submission Date' dari format "Sep 8, 2024"
+data$`Submission Date` <- as.Date(data$`Submission Date`, format = "%b %d, %Y")
+
+# Periksa hasilnya
+str(data)
+head(data)
+
+# Mencetak kolom 'Tanggal Pengiriman'
+print(data$`Tanggal Pengiriman`)
+
+# Ganti bulan dalam bahasa Indonesia menjadi bahasa Inggris
+data$`Tanggal Pengiriman` <- gsub("Des", "Dec", data$`Tanggal Pengiriman`)
+data$`Tanggal Pengiriman` <- gsub("Mei", "May", data$`Tanggal Pengiriman`)
+data$`Tanggal Pengiriman` <- gsub("Okt", "Oct", data$`Tanggal Pengiriman`)
+data$`Tanggal Pengiriman` <- gsub("Mar", "Mar", data$`Tanggal Pengiriman`)
+data$`Tanggal Pengiriman` <- gsub("Feb", "Feb", data$`Tanggal Pengiriman`)
+data$`Tanggal Pengiriman` <- gsub("Jun", "Jun", data$`Tanggal Pengiriman`)
+data$`Tanggal Pengiriman` <- gsub("Jan", "Jan", data$`Tanggal Pengiriman`)
+data$`Tanggal Pengiriman` <- gsub("Apr", "Apr", data$`Tanggal Pengiriman`)
+data$`Tanggal Pengiriman` <- gsub("Jul", "Jul", data$`Tanggal Pengiriman`)
+data$`Tanggal Pengiriman` <- gsub("Sep", "Sep", data$`Tanggal Pengiriman`)
+
+# Konversi kolom menjadi tipe Date
+data$`Tanggal Pengiriman` <- as.Date(data$`Tanggal Pengiriman`, format = "%b %d, %Y")
+
+# Periksa hasilnya
+str(data$`Tanggal Pengiriman`)
+head(data$`Tanggal Pengiriman`)
+
+
+#PREPROCESSING NO TELP
+# Hapus semua karakter yang bukan angka atau tanda plus
+data$`Nomor Telepon` <- gsub("[^0-9+]", "", data$`Nomor Telepon`)
+
+# Lihat beberapa baris setelah pembersihan
+head(data$`Nomor Telepon`)
+
+# Cek format nomor telepon, misalnya dengan memastikan panjangnya sesuai
+# Misalkan nomor telepon yang valid memiliki panjang 10-15 karakter
+
+valid_length <- nchar(data$`Nomor Telepon`) >= 10 & nchar(data$`Nomor Telepon`) <= 15
+data$`Nomor Telepon`[!valid_length] <- NA
+
+# Periksa hasil
+head(data$`Nomor Telepon`)
