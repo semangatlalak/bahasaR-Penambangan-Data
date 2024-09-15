@@ -1,0 +1,232 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+install.packages("readxl")
+```
+```{r}
+install.packages("dplyr")
+```
+```{r}
+install.packages("tidyverse")
+```
+```{r}
+# Muat paket
+library(readxl)
+```
+```{r}
+library(dplyr)
+```
+```{r}
+library(tidyverse)
+```
+
+```{r}
+install.packages("stringr")
+```
+
+```{r}
+library(stringr)
+```
+
+```{r}
+install.packages("tidyr")
+library(tidyr)
+```
+
+```{r}
+library(lubridate)
+```
+
+```{r}
+install.packages("purrr")
+
+```
+
+```{r}
+library(purrr)
+
+```
+
+```{r}
+getwd()
+setwd("C:/Users/USER/OneDrive - Universitas Sanata Dharma/Luluk Kuliah/Luluk Kuliah SEM 5/Penambangan Data/Tugas")
+dfm <- read_excel("FRESH_MART_2.xlsx", sheet = 1)
+```
+```{r}
+# Menampilkan 6 baris pertama (default)
+head(dfm)
+```
+```{r}
+# Menampilkan 10 baris pertama
+head(dfm, 10)
+```
+```{r}
+# Membuka data dalam tampilan spreadsheet (hanya di RStudio)
+View(dfm)
+```
+```{r}
+str(dfm)
+```
+```{r}
+summary(dfm)
+```
+
+```{r}
+#PREPROCESSING SUBMISSION DATE DAN TGL PENGIRIMAN
+# Konversi kolom 'Submission Date' dari format "Sep 8, 2024"
+dfm$`Submission Date` <- as.Date(dfm$`Submission Date`, format = "%b %d, %Y")
+```
+```{r}
+# Periksa hasilnya
+str(dfm)
+head(dfm)
+```
+```{r}
+# Mencetak kolom 'Tanggal Pengiriman'
+print(dfm$`Tanggal Pengiriman`)
+```
+```{r}
+# Ganti bulan dalam bahasa Indonesia menjadi bahasa Inggris
+dfm$`Tanggal Pengiriman` <- gsub("Des", "Dec", dfm$`Tanggal Pengiriman`)
+dfm$`Tanggal Pengiriman` <- gsub("Mei", "May", dfm$`Tanggal Pengiriman`)
+dfm$`Tanggal Pengiriman` <- gsub("Okt", "Oct", dfm$`Tanggal Pengiriman`)
+dfm$`Tanggal Pengiriman` <- gsub("Mar", "Mar", dfm$`Tanggal Pengiriman`)
+dfm$`Tanggal Pengiriman` <- gsub("Feb", "Feb", dfm$`Tanggal Pengiriman`)
+dfm$`Tanggal Pengiriman` <- gsub("Jun", "Jun", dfm$`Tanggal Pengiriman`)
+dfm$`Tanggal Pengiriman` <- gsub("Jan", "Jan", dfm$`Tanggal Pengiriman`)
+dfm$`Tanggal Pengiriman` <- gsub("Apr", "Apr", dfm$`Tanggal Pengiriman`)
+dfm$`Tanggal Pengiriman` <- gsub("Jul", "Jul", dfm$`Tanggal Pengiriman`)
+dfm$`Tanggal Pengiriman` <- gsub("Sep", "Sep", dfm$`Tanggal Pengiriman`)
+```
+```{r}
+# Konversi kolom menjadi tipe Date
+dfm$`Tanggal Pengiriman` <- as.Date(dfm$`Tanggal Pengiriman`, format = "%b %d, %Y")
+```
+```{r}
+# Periksa hasilnya
+str(dfm$`Tanggal Pengiriman`)
+head(dfm$`Tanggal Pengiriman`)
+```
+```{r}
+#PREPROCESSING NO TELP
+# Hapus semua karakter yang bukan angka atau tanda plus
+dfm$`Nomor Telepon` <- gsub("[^0-9+]", "", dfm$`Nomor Telepon`)
+```
+```{r}
+# Lihat beberapa baris setelah pembersihan
+head(dfm$`Nomor Telepon`)
+```
+```{r}
+str(dfm)  # Memeriksa struktur data
+
+```
+```{r}
+# Mengecek panjang nomor telepon
+valid_length <- nchar(dfm$`Nomor Telepon`) >= 10 & nchar(dfm$`Nomor Telepon`) <= 15
+```
+```{r}
+# Mengubah nomor telepon yang tidak valid menjadi NA
+dfm$`Nomor Telepon`[!valid_length] <- NA
+```
+```{r}
+# Menampilkan nomor telepon yang tidak valid
+dfm$`Nomor Telepon`[is.na(dfm$`Nomor Telepon`)]
+
+```
+```{r}
+# Periksa hasil
+head(dfm$`Nomor Telepon`)
+```
+```{r}
+# Mencari semua missing value dalam column
+colSums(is.na(dfm))
+```
+
+```{r}
+# Pastikan kolom 'Produk' berisi string
+dfm <- dfm %>% 
+  mutate(Produk = as.character(Produk))
+```
+
+```{r}
+# Fungsi untuk mengekstrak informasi dari detail produk
+extract_info <- function(detail) {
+  tibble(
+    Name = str_extract(detail, "^.*?(?=\\s\\(Amount)"),
+    Quantity = as.numeric(str_extract(detail, "(?<=Kuantitas: )\\d+")),
+    Amount = str_extract(detail, "(?<=Amount: )[\\d,]+")
+  ) %>%
+    mutate(
+      Amount = str_replace_all(Amount, ",", "") %>% as.numeric()
+    )
+}
+```
+
+```{r}
+# Membagi setiap baris 'Produk' menjadi beberapa baris berdasarkan "\n"
+data_split <- dfm %>%
+  mutate(Produk_Split = str_split(Produk, "\n")) %>%
+  unnest(Produk_Split)
+```
+
+```{r}
+# Menghilangkan baris yang mengandung 'Total'
+data_filtered <- data_split %>%
+  filter(!str_detect(Produk_Split, "Total:")) %>%
+  mutate(Details = map(Produk_Split, extract_info)) %>%
+  unnest(Details)
+```
+
+```{r}
+# Menghitung total kuantitas dan harga satuan per produk
+summary_data <- data_filtered %>%
+  group_by(Name) %>%
+  summarize(
+    Total_Quantity = sum(Quantity, na.rm = TRUE),
+    Unit_Price = first(Amount)  # Asumsi harga satuan sama untuk setiap produk
+  )
+```
+
+```{r}
+# Menampilkan hasil
+print(summary_data)
+```
+
+```{r}
+install.packages("writexl")
+```
+
+```{r}
+# Pastikan paket 'writexl' sudah di-load
+library(writexl)
+```
+
+```{r}
+# Menyimpan data ke file Excel
+write_xlsx(data_split, "C:/Users/USER/OneDrive - Universitas Sanata Dharma/Luluk Kuliah/Luluk Kuliah SEM 5/Penambangan Data/Tugas/FRESH_MART_2")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
