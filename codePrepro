@@ -68,3 +68,5 @@ data$`Nomor Telepon`[!valid_length] <- NA
 
 # Periksa hasil
 head(data$`Nomor Telepon`)
+
+(((Lala nyoba buat misah yg tabel PRODUK)))
