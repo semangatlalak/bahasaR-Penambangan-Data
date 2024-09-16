@@ -2,13 +2,14 @@ install.packages("readxl")
 install.packages("dplyr")
 install.packages("tidyverse")
 
+
 # Muat paket
 library(readxl)
 library(dplyr)
-
 getwd()
 setwd("D:/kuliah/SEM 5/PenData")
 data <- read_excel("Fresh_Mart.xlsx", sheet = 1)
+
 
 # Menampilkan 6 baris pertama (default)
 head(data)
@@ -19,10 +20,10 @@ View(data)
 str(data)
 summary(data)
 
-#CODE LANJUTAN 2
+
+#code lanjut 2
 library(lubridate)
 
-#PREPROCESSING SUBMISSION DATE DAN TGL PENGIRIMAN
 # Konversi kolom 'Submission Date' dari format "Sep 8, 2024"
 data$`Submission Date` <- as.Date(data$`Submission Date`, format = "%b %d, %Y")
 
@@ -53,7 +54,6 @@ str(data$`Tanggal Pengiriman`)
 head(data$`Tanggal Pengiriman`)
 
 
-#PREPROCESSING NO TELP
 # Hapus semua karakter yang bukan angka atau tanda plus
 data$`Nomor Telepon` <- gsub("[^0-9+]", "", data$`Nomor Telepon`)
 
@@ -68,3 +68,93 @@ data$`Nomor Telepon`[!valid_length] <- NA
 
 # Periksa hasil
 head(data$`Nomor Telepon`)
+
+view(data)
+
+# PREPO LANJUTAN UTK PRODUK YANG DIBELI
+# Memisahkan setiap item produk menjadi baris terpisah
+data_long <- data %>%
+  # Mengganti line breaks dengan spasi
+  mutate(Produk = str_replace_all(Produk, "\\r\\n", " ")) %>%
+  # Memisahkan berdasarkan pola koma atau akhir dari informasi produk
+  separate_rows(Produk, sep = "(?<=\\))\\s+") %>%
+  # Menghapus baris yang berisi total belanja
+  filter(!str_detect(Produk, "^Total:"))
+
+# Fungsi untuk mengekstrak Nama Item
+extract_name <- function(produk) {
+  str_extract(produk, "^[^(]+") %>% 
+    str_trim()  # Menghapus spasi di awal dan akhir
+}
+
+# Fungsi untuk mengekstrak Amount
+extract_amount <- function(produk) {
+  amount_str <- str_extract(produk, "(?<=Amount: )[0-9,.]+")
+  if (is.na(amount_str)) return(NA)
+  as.numeric(gsub(",", "", amount_str))
+}
+
+# Fungsi untuk mengekstrak Kuantitas
+extract_quantity <- function(produk) {
+  quantity_str <- str_extract(produk, "(?<=Kuantitas: )[0-9]+")
+  if (is.na(quantity_str)) return(NA)
+  as.numeric(quantity_str)
+}
+
+# Mengaplikasikan fungsi untuk mengekstrak Nama Item, Amount, dan Kuantitas
+data_long <- data_long %>%
+  mutate(Nama_Item = sapply(Produk, extract_name),
+         Amount = sapply(Produk, extract_amount),
+         Quantity = sapply(Produk, extract_quantity))
+
+# Menampilkan hasil untuk memeriksa
+print(data_long %>% select(Nama, Nama_Item, Amount, Quantity) %>% head(10))
+
+view(data_long)
+
+#PREPO OUTLIERS
+
+# Menghitung Z-Score
+data_long <- data_long %>%
+  mutate(Amount_ZScore = (Amount - mean(Amount, na.rm = TRUE)) / sd(Amount, na.rm = TRUE),
+         Quantity_ZScore = (Quantity - mean(Quantity, na.rm = TRUE)) / sd(Quantity, na.rm = TRUE))
+
+# Menentukan threshold untuk z-score, biasanya lebih dari 3 dianggap sebagai outlier
+outliers_amount_z <- data_long %>% filter(abs(Amount_ZScore) > 3)
+outliers_quantity_z <- data_long %>% filter(abs(Quantity_ZScore) > 3)
+
+print(outliers_amount_z)
+print(outliers_quantity_z)
+
+# Menghitung IQR dan menentukan batas outlier
+iqr_amount <- IQR(data_long$Amount, na.rm = TRUE)
+q1_amount <- quantile(data_long$Amount, 0.25, na.rm = TRUE)
+q3_amount <- quantile(data_long$Amount, 0.75, na.rm = TRUE)
+
+outliers_amount_iqr <- data_long %>% filter(Amount < (q1_amount - 1.5 * iqr_amount) | Amount > (q3_amount + 1.5 * iqr_amount))
+
+iqr_quantity <- IQR(data_long$Quantity, na.rm = TRUE)
+q1_quantity <- quantile(data_long$Quantity, 0.25, na.rm = TRUE)
+q3_quantity <- quantile(data_long$Quantity, 0.75, na.rm = TRUE)
+
+outliers_quantity_iqr <- data_long %>% filter(Quantity < (q1_quantity - 1.5 * iqr_quantity) | Quantity > (q3_quantity + 1.5 * iqr_quantity))
+
+print(outliers_amount_iqr)
+print(outliers_quantity_iqr)
+
+library(ggplot2)
+
+# Boxplot untuk Amount
+ggplot(data_long, aes(x = "", y = Amount)) +
+  geom_boxplot() +
+  labs(title = "Boxplot of Amount", y = "Amount")
+
+# Boxplot untuk Quantity
+ggplot(data_long, aes(x = "", y = Quantity)) +
+  geom_boxplot() +
+  labs(title = "Boxplot of Quantity", y = "Quantity")
+
+# Scatter plot antara Amount dan Quantity
+ggplot(data_long, aes(x = Amount, y = Quantity)) +
+  geom_point() +
+  labs(title = "Scatter Plot of Amount vs Quantity", x = "Amount", y = "Quantity")
