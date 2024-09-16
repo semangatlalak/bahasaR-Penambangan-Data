@@ -175,6 +175,14 @@ data_long <- data %>%
 ```
 
 ```{r}
+# Fungsi untuk mengekstrak Nama Item
+extract_name <- function(produk) {
+  str_extract(produk, "^[^(]+") %>% 
+    str_trim()  # Menghapus spasi di awal dan akhir
+}
+```
+
+```{r}
 # Fungsi untuk mengekstrak Amount
 extract_amount <- function(produk) {
   amount_str <- str_extract(produk, "(?<=Amount: )[0-9,.]+")
